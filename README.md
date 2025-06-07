@@ -6,13 +6,13 @@ An intelligent AI-powered chatbot built using the Groq API, providing fast and a
 
 ## 🚀 Live Demo
 
-[Click here to try the chatbot (if deployed)](https://askita.streamlit.app/)
+[(https://askita.streamlit.app/)]
 
 ---
 
 ## 📸 Screenshot
 
-![AI Chatbot UI]("D:\aichatbot\screenshots\Screenshot 2025-06-07 194738.png")
+![("D:\aichatbot\screenshots\Screenshot 2025-06-07 194738.png")]
 
 ---
 
