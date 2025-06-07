@@ -1,12 +1,10 @@
 import streamlit as st
 import requests
-
 import os
 import fitz  # PyMuPDF
 
 # Load API Key
 GROQ_API_KEY = st.secrets["GROQ_API_KEY"]
-
 
 # PDF Extractor
 def extract_text_from_pdf(pdf_file):
@@ -21,6 +19,7 @@ st.set_page_config(page_title="Chatbot using Groq", page_icon="🧠")
 st.markdown("<h1 style='text-align: center;'>🤖 Groq Chatbot by Parth</h1>", unsafe_allow_html=True)
 st.markdown("<hr style='margin-top: 10px; margin-bottom: 20px;'>", unsafe_allow_html=True)
 
+# Custom CSS
 st.markdown("""
     <style>
     body {
@@ -42,35 +41,73 @@ pdf_text = ""
 if uploaded_pdf:
     pdf_text = extract_text_from_pdf(uploaded_pdf)
     st.sidebar.success("✅ PDF uploaded successfully!")
-    # Store as a system message (or replace later)
     if not any(msg["role"] == "system" for msg in st.session_state.messages):
         st.session_state.messages.insert(0, {
             "role": "system",
             "content": f"Use this PDF content to answer queries:\n\n{pdf_text[:3000]}"
         })
 
-# Display Chat Messages
-for msg in st.session_state.messages:
-    if msg["role"] == "user":
+if prompt:
+    st.session_state.messages.append({"role": "user", "content": prompt})
+    st.markdown(
+        f"""
+        <div style='text-align: right;
+                    background-color: #dcf8c6;
+                    color: black;
+                    padding: 10px 15px;
+                    margin: 10px 0;
+                    border-radius: 12px;
+                    max-width: 80%;
+                    margin-left: auto;'>
+            {prompt}
+        </div>
+        """,
+        unsafe_allow_html=True
+    )
+
+    headers = {
+        "Authorization": f"Bearer {GROQ_API_KEY}",
+        "Content-Type": "application/json",
+    }
+
+    body = {
+        "model": "llama3-8b-8192",
+        "messages": st.session_state.messages
+    }
+
+    response = requests.post(
+        "https://api.groq.com/openai/v1/chat/completions",
+        headers=headers,
+        json=body,
+    )
+
+    if response.status_code == 200:
+        reply = response.json()["choices"][0]["message"]["content"]
+        st.session_state.messages.append({"role": "assistant", "content": reply})
         st.markdown(
-            f"<div style='text-align: right; background-color: #dcf8c6; padding: 10px 15px; margin: 10px 0; border-radius: 12px; max-width: 80%; margin-left: auto;'>{msg['content']}</div>",
+            f"""
+            <div style='text-align: left;
+                        background-color: #f1f0f0;
+                        color: black;
+                        padding: 10px 15px;
+                        margin: 10px 0;
+                        border-radius: 12px;
+                        max-width: 80%;
+                        margin-right: auto;'>
+                {reply}
+            </div>
+            """,
             unsafe_allow_html=True
         )
-    elif msg["role"] == "assistant":
-        st.markdown(
-            f"<div style='text-align: left; background-color: #f1f0f0; padding: 10px 15px; margin: 10px 0; border-radius: 12px; max-width: 80%; margin-right: auto;'>{msg['content']}</div>",
-            unsafe_allow_html=True
-        )
+
 
 # Chat Input
 prompt = st.chat_input("Ask me anything!")
 
 if prompt:
-    # Save user message
     st.session_state.messages.append({"role": "user", "content": prompt})
     st.chat_message("user").markdown(prompt)
 
-    # Prepare API call
     headers = {
         "Authorization": f"Bearer {GROQ_API_KEY}",
         "Content-Type": "application/json",
