@@ -12,7 +12,7 @@ An intelligent AI-powered chatbot built using the Groq API, providing fast and a
 
 ## 📸 Screenshot
 
-![("D:\aichatbot\screenshots\Screenshot 2025-06-07 194738.png")]
+![AI Chatbot UI](screenshots/Screenshot-2025-06-07-194738.png)
 
 ---
 
