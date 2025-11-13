@@ -2,4 +2,5 @@ streamlit
 requests
 python-dotenv
 PyMuPDF
+sqlalchemy
 
