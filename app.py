@@ -1,7 +1,7 @@
 import streamlit as st
 import requests
-import os
 import fitz  # PyMuPDF
+from database import save_message, get_all_messages  # 👈 Import database functions
 
 # Load API Key
 GROQ_API_KEY = st.secrets["GROQ_API_KEY"]
@@ -29,11 +29,12 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-# Session State
+# Load previous messages from DB into session state
 if "messages" not in st.session_state:
-    st.session_state.messages = []
+    past_messages = get_all_messages()
+    st.session_state.messages = [{"role": m.role, "content": m.content} for m in past_messages]
 
-# PDF Upload Sidebar
+# Sidebar for PDF upload
 st.sidebar.header("📎 Upload a PDF to Chat With It")
 uploaded_pdf = st.sidebar.file_uploader("Upload PDF", type="pdf")
 
@@ -42,15 +43,17 @@ if uploaded_pdf:
     pdf_text = extract_text_from_pdf(uploaded_pdf)
     st.sidebar.success("✅ PDF uploaded successfully!")
     if not any(msg["role"] == "system" for msg in st.session_state.messages):
-        st.session_state.messages.insert(0, {
+        system_msg = {
             "role": "system",
             "content": f"Use this PDF content to answer queries:\n\n{pdf_text[:3000]}"
-        })
+        }
+        st.session_state.messages.insert(0, system_msg)
+        save_message("system", system_msg["content"])
 
-if prompt:
-    st.session_state.messages.append({"role": "user", "content": prompt})
-    st.markdown(
-        f"""
+# Display previous messages (UI bubbles)
+for msg in st.session_state.messages:
+    if msg["role"] == "user":
+        st.markdown(f"""
         <div style='text-align: right;
                     background-color: #dcf8c6;
                     color: black;
@@ -59,53 +62,30 @@ if prompt:
                     border-radius: 12px;
                     max-width: 80%;
                     margin-left: auto;'>
-            {prompt}
+            {msg["content"]}
         </div>
-        """,
-        unsafe_allow_html=True
-    )
-
-    headers = {
-        "Authorization": f"Bearer {GROQ_API_KEY}",
-        "Content-Type": "application/json",
-    }
-
-    body = {
-        "model": "llama-3.1-8b-instant",
-        "messages": st.session_state.messages
-    }
-
-    response = requests.post(
-        "https://api.groq.com/openai/v1/chat/completions",
-        headers=headers,
-        json=body,
-    )
-
-    if response.status_code == 200:
-        reply = response.json()["choices"][0]["message"]["content"]
-        st.session_state.messages.append({"role": "assistant", "content": reply})
-        st.markdown(
-            f"""
-            <div style='text-align: left;
-                        background-color: #f1f0f0;
-                        color: black;
-                        padding: 10px 15px;
-                        margin: 10px 0;
-                        border-radius: 12px;
-                        max-width: 80%;
-                        margin-right: auto;'>
-                {reply}
-            </div>
-            """,
-            unsafe_allow_html=True
-        )
-
+        """, unsafe_allow_html=True)
+    elif msg["role"] == "assistant":
+        st.markdown(f"""
+        <div style='text-align: left;
+                    background-color: #f1f0f0;
+                    color: black;
+                    padding: 10px 15px;
+                    margin: 10px 0;
+                    border-radius: 12px;
+                    max-width: 80%;
+                    margin-right: auto;'>
+            {msg["content"]}
+        </div>
+        """, unsafe_allow_html=True)
 
 # Chat Input
 prompt = st.chat_input("Ask me anything!")
 
 if prompt:
+    # Save user message
     st.session_state.messages.append({"role": "user", "content": prompt})
+    save_message("user", prompt)
     st.chat_message("user").markdown(prompt)
 
     headers = {
@@ -127,6 +107,8 @@ if prompt:
     if response.status_code == 200:
         reply = response.json()["choices"][0]["message"]["content"]
         st.session_state.messages.append({"role": "assistant", "content": reply})
+        save_message("assistant", reply)
         st.chat_message("assistant").markdown(reply)
     else:
+        st.error("❌ API error occurred.")
         st.code(response.text, language="json")
